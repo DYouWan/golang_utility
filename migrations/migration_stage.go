@@ -6,7 +6,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// MigrationStage ...
+// MigrationStage 对外提供迁移的口子
 type MigrationStage struct {
 	Name     string
 	Function func(db *gorm.DB, name string) error
@@ -18,11 +18,9 @@ func Migrate(db *gorm.DB, migrations []MigrationStage) error {
 		if MigrationExists(db, m.Name) {
 			continue
 		}
-
 		if err := m.Function(db, m.Name); err != nil {
 			return err
 		}
-
 		if err := SaveMigration(db, m.Name); err != nil {
 			return err
 		}
@@ -32,28 +30,24 @@ func Migrate(db *gorm.DB, migrations []MigrationStage) error {
 
 // MigrationExists 检查迁移是否已经运行过
 func MigrationExists(db *gorm.DB, migrationName string) bool {
-	migration := new(Migration)
-
 	found := false
-	result := db.Where("name = ?", migrationName).First(migration)
+	result := db.Where("name = ?", migrationName).First(&MigrationModel{})
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		log.INFO.Printf("开始运行%s迁移", migrationName)
 	} else if result.Error != nil {
 		panic(result.Error)
 	} else {
 		found = true
-		log.INFO.Printf("跳过 %s 迁移", migrationName)
+		log.INFO.Printf("%s 已有迁移记录,本次跳过", migrationName)
 	}
 	return found
 }
 
-// SaveMigration 将迁移记录保存到迁移表
+// SaveMigration 记录执行外部的方法
 func SaveMigration(db *gorm.DB, migrationName string) error {
-	migration := new(Migration)
-	migration.Name = migrationName
+	migration := &MigrationModel{Name: migrationName}
 
 	if err := db.Create(migration).Error; err != nil {
-		log.ERROR.Printf("将记录保存到迁移表时出错: %s", err)
 		return err
 	}
 	return nil
