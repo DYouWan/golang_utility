@@ -2,11 +2,11 @@ package database
 
 import (
 	"fmt"
+	"github.com/dyouwan/utility/config"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 	"gorm.io/gorm/schema"
-	"utility/config"
 )
 
 func NewDataBase(cfg *config.DatabaseConfig) (*gorm.DB, error) {

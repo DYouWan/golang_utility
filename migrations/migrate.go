@@ -2,8 +2,8 @@ package migrations
 
 import (
 	"errors"
+	"github.com/dyouwan/utility/log"
 	"gorm.io/gorm"
-	"utility/log"
 )
 
 // MigrationStage ...
@@ -47,7 +47,6 @@ func MigrationExists(db *gorm.DB, migrationName string) bool {
 	return found
 }
 
-
 // SaveMigration 将迁移记录保存到迁移表
 func SaveMigration(db *gorm.DB, migrationName string) error {
 	migration := new(Migration)
@@ -72,5 +71,3 @@ func MigrateAll(db *gorm.DB, migrationFunctions []func(*gorm.DB) error) {
 		}
 	}
 }
-
-
