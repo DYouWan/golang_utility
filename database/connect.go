@@ -9,7 +9,8 @@ import (
 	"gorm.io/gorm/schema"
 )
 
-func NewDataBase(cfg *config.DatabaseConfig) (*gorm.DB, error) {
+// GetConnect 获取数据库连接
+func GetConnect(cfg *config.DatabaseConfig) (*gorm.DB, error) {
 	if cfg.Type == "mysql" {
 		return initMySql(cfg)
 	}
