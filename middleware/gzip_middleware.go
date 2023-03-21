@@ -7,50 +7,35 @@ import (
 	"strings"
 )
 
-func GzipMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// 检查客户端是否支持 gzip 压缩
-		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		// 设置响应头，表明响应内容已经被 gzip 压缩
-		w.Header().Set("Content-Encoding", "gzip")
-
-		// 创建 gzip 编码器，并将响应写入其中
-		gz := gzip.NewWriter(w)
-		defer gz.Close()
-
-		gzr := &gzipResponseWriter{Writer: gz, ResponseWriter: w}
-		next.ServeHTTP(gzr, r)
-	})
+type GzipMiddleware struct {
+	level int
 }
 
-func GzipMiddlewareWithLevel(level int) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// 检查客户端是否支持 gzip 压缩
-			if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
-				next.ServeHTTP(w, r)
-				return
-			}
+// NewGzip 返回gzip中间件
+func NewGzip(level int) *GzipMiddleware {
+	return &GzipMiddleware{level: level}
+}
 
-			// 设置响应头，表明响应内容已经被 gzip 压缩
-			w.Header().Set("Content-Encoding", "gzip")
-
-			// 创建 gzip 编码器，并将响应写入其中
-			gz, err := gzip.NewWriterLevel(w, level)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			defer gz.Close()
-
-			gzr := &gzipResponseWriter{Writer: gz, ResponseWriter: w}
-			next.ServeHTTP(gzr, r)
-		})
+func (m *GzipMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	// 检查客户端是否支持 gzip 压缩
+	if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+		next(w, r)
+		return
 	}
+
+	// 设置响应头，表明响应内容已经被 gzip 压缩
+	w.Header().Set("Content-Encoding", "gzip")
+
+	// 创建 gzip 编码器，并将响应写入其中
+	gz, err := gzip.NewWriterLevel(w, m.level)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer gz.Close()
+
+	gzr := &gzipResponseWriter{Writer: gz, ResponseWriter: w}
+	next(gzr, r)
 }
 
 // 封装响应写入器
