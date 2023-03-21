@@ -1,6 +1,7 @@
 package database
 
 import (
+	"database/sql"
 	"fmt"
 	"github.com/dyouwan/utility/config"
 	"gorm.io/driver/mysql"
@@ -10,7 +11,7 @@ import (
 )
 
 type Connect struct {
-	DB *gorm.DB
+	db *gorm.DB
 }
 
 // GetConnect 获取数据库连接
@@ -42,7 +43,7 @@ func initMySql(cfg *config.DatabaseConfig) (*Connect, error) {
 		return nil, err
 	}
 
-	conn := &Connect{DB: db}
+	conn := &Connect{db: db}
 	err = conn.config(cfg.MaxOpenCons, cfg.MaxIdleCons)
 	if err != nil {
 		return nil, err
@@ -54,11 +55,11 @@ func initMySql(cfg *config.DatabaseConfig) (*Connect, error) {
 // config 配置连接
 func (c *Connect) config(maxOpenCons int, maxIdleCons int) error {
 	// 如果连接已经关闭，则返回对应的错误信息
-	if c.DB == nil {
+	if c.db == nil {
 		return fmt.Errorf("database connection is already closed")
 	}
 
-	sqlDB, err := c.DB.DB()
+	sqlDB, err := c.db.DB()
 	if err != nil {
 		return err
 	}
@@ -69,14 +70,36 @@ func (c *Connect) config(maxOpenCons int, maxIdleCons int) error {
 	return nil
 }
 
+// GetDB 获取gorm.DB
+func (c *Connect) GetDB() *gorm.DB {
+	// 如果连接已经关闭，则返回对应的错误信息
+	if c.db == nil {
+		panic("database connection is already closed")
+	}
+	return c.db
+}
+
+// GetSqlDB 获取标准库SqlDB
+func (c *Connect) GetSqlDB() *sql.DB {
+	// 如果连接已经关闭，则返回对应的错误信息
+	if c.db == nil {
+		panic("database connection is already closed")
+	}
+	sqlDB, err := c.db.DB()
+	if err != nil {
+		panic(err)
+	}
+	return sqlDB
+}
+
 // Close 关闭数据库连接
 func (c *Connect) Close() error {
 	// 如果连接已经关闭，则返回对应的错误信息
-	if c.DB == nil {
+	if c.db == nil {
 		return fmt.Errorf("database connection is already closed")
 	}
 
-	sqlDB, err := c.DB.DB()
+	sqlDB, err := c.db.DB()
 	if err != nil {
 		return err
 	}
@@ -87,7 +110,7 @@ func (c *Connect) Close() error {
 	}
 
 	// 将连接标记为已关闭
-	c.DB = nil
+	c.db = nil
 
 	return nil
 }
