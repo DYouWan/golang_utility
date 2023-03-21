@@ -10,7 +10,7 @@ import (
 )
 
 type Connect struct {
-	db *gorm.DB
+	DB *gorm.DB
 }
 
 // GetConnect 获取数据库连接
@@ -42,8 +42,11 @@ func initMySql(cfg *config.DatabaseConfig) (*Connect, error) {
 		return nil, err
 	}
 
-	conn := &Connect{db: db}
-	conn.config(cfg.MaxOpenCons, cfg.MaxIdleCons)
+	conn := &Connect{DB: db}
+	err = conn.config(cfg.MaxOpenCons, cfg.MaxIdleCons)
+	if err != nil {
+		return nil, err
+	}
 
 	return conn, nil
 }
@@ -51,11 +54,11 @@ func initMySql(cfg *config.DatabaseConfig) (*Connect, error) {
 // config 配置连接
 func (c *Connect) config(maxOpenCons int, maxIdleCons int) error {
 	// 如果连接已经关闭，则返回对应的错误信息
-	if c.db == nil {
+	if c.DB == nil {
 		return fmt.Errorf("database connection is already closed")
 	}
 
-	sqlDB, err := c.db.DB()
+	sqlDB, err := c.DB.DB()
 	if err != nil {
 		return err
 	}
@@ -69,11 +72,11 @@ func (c *Connect) config(maxOpenCons int, maxIdleCons int) error {
 // Close 关闭数据库连接
 func (c *Connect) Close() error {
 	// 如果连接已经关闭，则返回对应的错误信息
-	if c.db == nil {
+	if c.DB == nil {
 		return fmt.Errorf("database connection is already closed")
 	}
 
-	sqlDB, err := c.db.DB()
+	sqlDB, err := c.DB.DB()
 	if err != nil {
 		return err
 	}
@@ -84,7 +87,7 @@ func (c *Connect) Close() error {
 	}
 
 	// 将连接标记为已关闭
-	c.db = nil
+	c.DB = nil
 
 	return nil
 }
