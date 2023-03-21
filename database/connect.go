@@ -9,15 +9,19 @@ import (
 	"gorm.io/gorm/schema"
 )
 
+type Connect struct {
+	db *gorm.DB
+}
+
 // GetConnect 获取数据库连接
-func GetConnect(cfg *config.DatabaseConfig) (*gorm.DB, error) {
+func GetConnect(cfg *config.DatabaseConfig) (*Connect, error) {
 	if cfg.Type == "mysql" {
 		return initMySql(cfg)
 	}
-	return nil, fmt.Errorf("无效的数据库类型")
+	return nil, fmt.Errorf("invalid database type")
 }
 
-func initMySql(cfg *config.DatabaseConfig) (*gorm.DB, error) {
+func initMySql(cfg *config.DatabaseConfig) (*Connect, error) {
 	args := fmt.Sprintf(
 		"%s:%s@(%s:%d)/%s?charset=utf8&parseTime=True&loc=Local",
 		cfg.User,
@@ -26,22 +30,61 @@ func initMySql(cfg *config.DatabaseConfig) (*gorm.DB, error) {
 		cfg.Port,
 		cfg.DatabaseName,
 	)
+
 	db, err := gorm.Open(mysql.Open(args), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
 		NamingStrategy: schema.NamingStrategy{
 			SingularTable: true,
 		},
 	})
+
 	if err != nil {
-		return db, err
+		return nil, err
 	}
 
-	sqlDB, err := db.DB()
-	if err != nil {
-		return db, err
-	}
-	sqlDB.SetMaxOpenConns(cfg.MaxOpenCons)
-	sqlDB.SetMaxIdleConns(cfg.MaxIdleCons)
+	conn := &Connect{db: db}
+	conn.config(cfg.MaxOpenCons, cfg.MaxIdleCons)
 
-	return db, nil
+	return conn, nil
+}
+
+// config 配置连接
+func (c *Connect) config(maxOpenCons int, maxIdleCons int) error {
+	// 如果连接已经关闭，则返回对应的错误信息
+	if c.db == nil {
+		return fmt.Errorf("database connection is already closed")
+	}
+
+	sqlDB, err := c.db.DB()
+	if err != nil {
+		return err
+	}
+
+	sqlDB.SetMaxOpenConns(maxOpenCons)
+	sqlDB.SetMaxIdleConns(maxIdleCons)
+
+	return nil
+}
+
+// Close 关闭数据库连接
+func (c *Connect) Close() error {
+	// 如果连接已经关闭，则返回对应的错误信息
+	if c.db == nil {
+		return fmt.Errorf("database connection is already closed")
+	}
+
+	sqlDB, err := c.db.DB()
+	if err != nil {
+		return err
+	}
+
+	err = sqlDB.Close()
+	if err != nil {
+		return fmt.Errorf("failed to close connection: %v", err)
+	}
+
+	// 将连接标记为已关闭
+	c.db = nil
+
+	return nil
 }
