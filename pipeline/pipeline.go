@@ -37,16 +37,18 @@ func build(handlers []Handler) middleware {
 	voidMiddleware := VoidMiddleware()
 
 	switch len(handlers) {
+	case 0:
+		return VoidMiddleware()
 	case 1:
-		return middleware{handlers[0], voidMiddleware}
+		return middleware{handlers[0], &voidMiddleware}
 	case 2:
-		return middleware{handlers[0], &middleware{handlers[1], voidMiddleware}}
+		return middleware{handlers[0], &middleware{handlers[1], &voidMiddleware}}
 	case 3:
-		return middleware{handlers[0], &middleware{handlers[1], &middleware{handlers[2], voidMiddleware}}}
+		return middleware{handlers[0], &middleware{handlers[1], &middleware{handlers[2], &voidMiddleware}}}
 	default:
 		var stack []middleware
 		for i := len(handlers) - 1; i >= 0; i-- {
-			m := middleware{handlers[i], voidMiddleware}
+			m := middleware{handlers[i], &voidMiddleware}
 			if len(stack) > 0 {
 				m.next = &stack[len(stack)-1]
 			}
