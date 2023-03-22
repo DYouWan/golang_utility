@@ -3,9 +3,7 @@ module github.com/dyouwan/utility
 go 1.20
 
 require (
-	github.com/gorilla/mux v1.8.0
 	github.com/sirupsen/logrus v1.9.0
-	github.com/urfave/negroni v1.0.0
 	gorm.io/driver/mysql v1.4.7
 	gorm.io/gorm v1.24.6
 )
