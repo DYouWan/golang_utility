@@ -1,8 +1,6 @@
 package pipeline
 
 import (
-	"fmt"
-	"github.com/dyouwan/utility/log"
 	"net/http"
 )
 
@@ -20,9 +18,7 @@ func (m middleware) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 // VoidMiddleware 空的中间件，作为末尾使用
 func VoidMiddleware() middleware {
 	return middleware{
-		HandlerFunc(func(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-			log.Info(fmt.Sprintf("VoidMiddleware"))
-		}),
+		HandlerFunc(func(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {}),
 		&middleware{},
 	}
 }
