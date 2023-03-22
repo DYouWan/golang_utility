@@ -32,6 +32,17 @@ func (p *Pipeline) Use(handler Handler) {
 	p.middleware = build(p.handlers)
 }
 
+func (p *Pipeline) UseHandler(handler http.Handler) {
+	p.Use(adapt(handler))
+}
+
+func adapt(h http.Handler) HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+		h.ServeHTTP(rw, r)
+		next(rw, r)
+	}
+}
+
 // build 中间件链
 func build(handlers []Handler) middleware {
 	voidMiddleware := VoidMiddleware()

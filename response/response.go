@@ -6,9 +6,8 @@ import (
 )
 
 // WriteJSON writes JSON response
-func WriteJSON(w http.ResponseWriter, v interface{}, code int) {
+func WriteJSON(w http.ResponseWriter, v interface{}) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(code)
 	json.NewEncoder(w).Encode(v)
 }
 

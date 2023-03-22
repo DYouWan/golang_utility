@@ -9,6 +9,10 @@ var logger *logrus.Logger
 func init() {
 	logger = logrus.New()
 	logger.Level = logrus.DebugLevel
+	// 设置输出格式为 TextFormatter
+	logger.SetFormatter(&logrus.TextFormatter{
+		TimestampFormat: "2006-01-02 15:04:05.000",
+	})
 }
 
 // Info 方法，记录一条 Info 级别的日志
