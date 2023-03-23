@@ -18,11 +18,16 @@ func New(handlers ...Handler) *Pipeline {
 	}
 }
 
+// NewPipeline allocates and returns a new Pipeline.
+func NewPipeline() *Pipeline { return new(Pipeline) }
+
 // ServeHTTP 实现底层http.Handler接口
 func (p *Pipeline) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	p.middleware.ServeHTTP(rw, r)
 }
 
+// Use 添加中间件时，会将所有中间件进行编译，形成中间件链。
+// 执行Pipeline的ServeHTTP方法时，实际是执行第一个中间件，然后根据中间件的链，依次调用下一个中间件
 func (p *Pipeline) Use(handler Handler) {
 	if handler == nil {
 		panic("handler cannot be nil")
@@ -32,11 +37,13 @@ func (p *Pipeline) Use(handler Handler) {
 	p.middleware = build(p.handlers)
 }
 
+// UseHandler 添加处理程序
 func (p *Pipeline) UseHandler(handler http.Handler) {
-	p.Use(adapt(handler))
+	p.Use(Adapt(handler))
 }
 
-func adapt(h http.Handler) HandlerFunc {
+// Adapt 适配器
+func Adapt(h http.Handler) HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 		h.ServeHTTP(rw, r)
 		next(rw, r)
