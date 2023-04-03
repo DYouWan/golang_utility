@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"fmt"
-	"github.com/dyouwan/utility/log"
 	"github.com/dyouwan/utility/pipeline"
 	"github.com/google/uuid"
 	"net/http"
@@ -32,7 +31,7 @@ func Time() pipeline.HandlerFunc {
 			duration := time.Since(start).Milliseconds()
 
 			// 输出请求日志
-			log.Info(fmt.Sprintf("%s %s request %s%s 耗时:%dms", requestID, r.RemoteAddr, r.Host, r.URL.String(), duration))
+			logger.Info(fmt.Sprintf("%s %s request %s%s 耗时:%dms", requestID, r.RemoteAddr, r.Host, r.URL.String(), duration))
 		} else {
 			next(rw, r)
 		}

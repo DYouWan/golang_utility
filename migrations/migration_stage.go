@@ -2,7 +2,6 @@ package migrations
 
 import (
 	"errors"
-	"github.com/dyouwan/utility/log"
 	"gorm.io/gorm"
 )
 
@@ -33,12 +32,12 @@ func MigrationExists(db *gorm.DB, migrationName string) bool {
 	found := false
 	result := db.Where("name = ?", migrationName).First(&MigrationModel{})
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		log.Info("The %s migration starts", migrationName)
+		logger.Info("The %s migration starts", migrationName)
 	} else if result.Error != nil {
 		panic(result.Error)
 	} else {
 		found = true
-		log.Info("%s There is a migration record, skip this time", migrationName)
+		logger.Info("%s There is a migration record, skip this time", migrationName)
 	}
 	return found
 }
@@ -56,12 +55,12 @@ func SaveMigration(db *gorm.DB, migrationName string) error {
 // MigrateAll 运行引导，然后运行列出的所有迁移函数
 func MigrateAll(db *gorm.DB, migrationFunctions []func(*gorm.DB) error) {
 	if err := Bootstrap(db); err != nil {
-		log.Error(err)
+		logger.Error(err)
 	}
 
 	for _, m := range migrationFunctions {
 		if err := m(db); err != nil {
-			log.Error(err)
+			logger.Error(err)
 		}
 	}
 }
