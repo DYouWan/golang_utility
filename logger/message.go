@@ -13,6 +13,7 @@ var logMessagePool = sync.Pool{
 
 // LogMessage 日志消息结构体
 type LogMessage struct {
+	Index  int64
 	level  Level     // 日志等级
 	time   time.Time // 日志时间
 	msg    string    // 日志内容

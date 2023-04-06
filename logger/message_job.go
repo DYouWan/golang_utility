@@ -6,6 +6,7 @@ import (
 
 // LogMessageJob 定义一个日志消息的处理器
 type LogMessageJob struct {
+	Index   int64
 	message *LogMessage
 }
 

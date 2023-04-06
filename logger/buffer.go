@@ -52,21 +52,6 @@ func (c *CircularBuffer) Write(msg *LogMessage) {
 	<-c.writeSemaphore // 释放写信号量
 }
 
-// WriteCircular 向缓冲区中写入一条日志消息,如果缓冲区满了 就覆盖
-func (c *CircularBuffer) WriteCircular(msg *LogMessage) {
-	c.writeSemaphore <- struct{}{} // 获取写信号量，阻塞直到有足够空间写入日志消息
-	c.mutex.Lock()                 // 获取互斥锁，避免其他goroutine同时访问缓冲区
-	defer c.mutex.Unlock()
-	if c.used == c.size { // 缓冲区已满，覆盖最早的数据
-		c.readIndex = (c.readIndex + 1) % c.size
-	} else { // 缓冲区未满，更新已用空间
-		c.used++
-	}
-	c.buffer[c.writeIndex] = msg // 写入日志消息
-	c.writeIndex = (c.writeIndex + 1) % c.size
-	<-c.writeSemaphore // 释放写信号量
-}
-
 // Read 从缓冲区中读取一条日志消息
 func (c *CircularBuffer) Read() *LogMessage {
 	c.readSemaphore <- struct{}{} // 获取读信号量，阻塞直到有足够数据可读
@@ -81,4 +66,19 @@ func (c *CircularBuffer) Read() *LogMessage {
 	c.used--
 	<-c.readSemaphore // 释放读信号量
 	return msg
+}
+
+// WriteCircular 向缓冲区中写入一条日志消息,如果缓冲区满了 就覆盖
+func (c *CircularBuffer) WriteCircular(msg *LogMessage) {
+	c.writeSemaphore <- struct{}{} // 获取写信号量，阻塞直到有足够空间写入日志消息
+	c.mutex.Lock()                 // 获取互斥锁，避免其他goroutine同时访问缓冲区
+	defer c.mutex.Unlock()
+	if c.used == c.size { // 缓冲区已满，覆盖最早的数据
+		c.readIndex = (c.readIndex + 1) % c.size
+	} else { // 缓冲区未满，更新已用空间
+		c.used++
+	}
+	c.buffer[c.writeIndex] = msg // 写入日志消息
+	c.writeIndex = (c.writeIndex + 1) % c.size
+	<-c.writeSemaphore // 释放写信号量
 }

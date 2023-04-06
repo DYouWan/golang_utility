@@ -15,11 +15,10 @@ var DefaultLog = new(Logger)
 
 // Logger 日志记录
 type Logger struct {
-	level    Level              // 日志记录器等级
-	buffer   *CircularBuffer    // 环形缓冲区实例,作为一级缓存
-	files    map[Level]*os.File // 日志文件句柄
-	logCh    chan *LogMessage   // 通道缓冲区，用于暂存日志消息。 作为二级缓存
-	stopChan chan struct{}      // 停止信号通道，用于停止后台goroutine
+	level        Level              // 日志记录器等级
+	files        map[Level]*os.File // 日志文件句柄
+	inputBuffer  *CircularBuffer    // 环形缓冲区实例,作为一级缓存
+	outputBuffer chan *LogMessage   // 通道缓冲区，用于暂存日志消息。 作为二级缓存
 }
 
 func init() {
@@ -70,14 +69,14 @@ func NewLogger(opts Options) (*Logger, error) {
 	}
 
 	log := &Logger{
-		level:  opts.Level,
-		files:  files,
-		logCh:  make(chan *LogMessage, 1024),
-		buffer: NewCircularBuffer(opts.BufferSize),
+		level:        opts.Level,
+		files:        files,
+		outputBuffer: make(chan *LogMessage, 1024),
+		inputBuffer:  NewCircularBuffer(opts.BufferSize),
 	}
 
 	go log.writeBuffer()
-	go log.startWorkers(runtime.NumCPU())
+	go log.startWorkersOrdered(runtime.NumCPU())
 
 	return log, nil
 }
@@ -115,7 +114,7 @@ func (l *Logger) Log(level Level, msg string, source string) {
 		logMsg.time = time.Now()
 		logMsg.msg = msg
 		logMsg.source = source
-		l.buffer.Write(logMsg)
+		l.inputBuffer.Write(logMsg)
 	}
 }
 
@@ -125,45 +124,38 @@ func (l *Logger) Log(level Level, msg string, source string) {
 // 然后，另外启动一个或多个协程，负责从管道中读取日志消息，并将其写入到对应的文件中。这样做可以实现异步写入日志消息，避免阻塞后台线程。
 func (l *Logger) writeBuffer() {
 	for {
-		msg := l.buffer.Read()
+		msg := l.inputBuffer.Read()
 		if msg != nil {
-			l.logCh <- msg
+			l.outputBuffer <- msg
 		} else {
-			time.Sleep(time.Millisecond * 100) // 防止空循环占用CPU资源
+			// 如果没有消息，则休眠一段时间
+			timer := time.NewTimer(time.Millisecond * 100)
+			<-timer.C
 		}
 	}
 }
 
-//func (l *Logger) startWriters(num int) {
-//	for i := 0; i < num; i++ {
-//		go func() {
-//			for {
-//				select {
-//				case msg := <-l.logCh:
-//					logMsg := fmt.Sprintf("[%s] %s %s\n", msg.level.String(), msg.time.Format("2006-01-02 15:04:05"), msg.msg)
-//					writer := l.writers[msg.level]
-//					if writer != nil {
-//						_, err := writer.WriteString(logMsg)
-//						if err != nil {
-//							fmt.Println("Failed to write log message:", err)
-//						} else {
-//							_ = writer.Flush()
-//						}
-//					}
-//					// 将 LogMessage 对象归还给对象池
-//					logMessagePool.Put(msg)
-//				case <-l.stopChan:
-//					// 关闭停止信号通道，并退出goroutine
-//					close(l.logCh)
-//					return
-//				}
-//			}
-//		}()
-//	}
-//}
+// 使用 worker pool 处理日志消息。 处理消息时是有序的
+func (l *Logger) startWorkersOrdered(num int) {
+	workerPool := pool.NewWorkerPool(num)
+	workerPool.Start()
 
-// 使用 worker pool 处理日志消息
-func (l *Logger) startWorkers(num int) {
+	// 将 LogMessage 对象转换为 Job 对象，并提交到 worker pool 中处理
+	go func() {
+		for {
+			select {
+			case msg := <-l.outputBuffer:
+				job := &LogMessageJob{message: msg}
+				workerPool.Submit(job)
+			case <-workerPool.Quit:
+				return
+			}
+		}
+	}()
+}
+
+// 使用 worker pool 处理日志消息。 处理消息时是乱序的
+func (l *Logger) startWorkersDisordered(num int) {
 	workerPool := pool.NewWorkerPool(num)
 	workerPool.Start()
 
@@ -172,7 +164,7 @@ func (l *Logger) startWorkers(num int) {
 		go func() {
 			for {
 				select {
-				case msg := <-l.logCh:
+				case msg := <-l.outputBuffer:
 					job := &LogMessageJob{message: msg}
 					workerPool.Submit(job)
 				case <-workerPool.Quit:
@@ -182,22 +174,6 @@ func (l *Logger) startWorkers(num int) {
 		}()
 	}
 }
-
-//// Stop 停止日志记录器并关闭文件
-//func (b *FileBuffer) Stop() {
-//	close(b.stopChan)
-//	b.file.Close()
-// 然后关闭所有文件
-//for _, writer := range l.writers {
-//closer, ok := writer.(io.Closer)
-//if ok {
-//err := closer.Close()
-//if err != nil {
-//return err
-//}
-//}
-//}
-//}
 
 // Info 方法，记录一条 Info 级别的日志
 func Info(msg string, source string) {
